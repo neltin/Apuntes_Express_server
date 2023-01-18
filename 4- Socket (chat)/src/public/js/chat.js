@@ -3,8 +3,15 @@ const socket = io(); //Conectar al servidor Socket => (connection)
 
 //Nombre de usuario
 let user;
+const Name = document.getElementById("name");
+/**
+ * Inicializacion de Sweet Alert
+ * -----------------------------
+ * Antes de ingresar al chat el usuario tiene que completar su nombre de usuario
+ * Se guarda y se envia emit() el nombre para el resto de los usuarios.
+ */
 
-//Inicializacion de Sweet alert
+//Login
  Swal.fire({
     title: 'ingrese su usuario',
     input: 'text',
@@ -17,51 +24,114 @@ let user;
     allowEscapeKey: false, //bloquea salir del modal con enter
     padding: '16px'
    }).then((result) => {
-    user = result.value;
-    socket.emit('login', user);
+      user = result.value;
+      Name.innerHTML = user;
+      //Trae el chat antes de conectarte
+      socket.emit('login', user);
   });
 
 
+/**
+ * Chat
+ * ----
+ */
+  const chat = document.getElementById("chat");
+  const textArea = document.getElementById("textarea");
 
+  //Template de Mensajes
+  const RenderMsjUser = (user, msj)=>{
+    return `<li class="other">
+      <div class="avatar"><img src="https://i.imgur.com/DY6gND0.png" draggable="false"/></div>
+        <div class="msg">
+            <p><strong>${user}</strong></p>
+            <p>${msj}</p>
+            <time>20:17</time>
+        </div>
+      </li>`;
+  }
+  
+  const RenderMsj = (msj)=>{
+    return `<li class="self">
+      <div class="avatar"><img src="https://i.imgur.com/HYcn9xO.png" draggable="false"/></div>
+        <div class="msg">
+          <p><strong>yo</strong></p>
+          <p>${msj}</p>
+          <time>20:18</time>
+      </div>
+    </li>`
+  }
 
-
-
-
-
-//Tipo de mensajes - enviar
-// socket.emit("message", "Me estoy conectando de la vista Real Time Products");
-
-// //Recibidos
-// socket.on("individual", (data)=>{
-//     console.log("individual: ", data);
-// });
-   
-// socket.on("todos_menos_este", (data)=>{
-//     console.log("todos_menos_este: ", data);
-// });
-
-// socket.on("todos", (data)=>{
-//     console.log("todos: ", data);
-// });
-
-
-// const input_text = document.getElementById("input_text")
-// const text_incrustrado = document.getElementById("text_incrustrado")
-
-
-
-// input_text.addEventListener("keyup", (e)=>{
-//     const key = e.key;
-//     e.target.value = "";
-
-//     socket.emit("chat", key);
-// })
-
-
-socket.on("print_chat", (data)=>{
-    text_incrustrado.innerHTML += data;       
-
-
+//Enviamos el Msj al Back-end
+  textArea.addEventListener("keyup", (e)=>{
+  //Si se presiona en el Enter
+  if(e.key === "Enter"){
+    //Si algun valor - elimina las comillas
+    if(textArea.value.trim().length){
+      socket.emit("msj", {user: user , msj: textArea.value})
+      textArea.value = "";
+    }
+  } 
 })
+
+//Datos que recibimos de Back-end
+socket.on('msj-chat', (data) => {
+  const html = data.map(item => {
+    if (item.user === user) {
+      return RenderMsj(item.msj);
+    } else {
+      return RenderMsjUser(item.user, item.msj);
+    }
+  }).join("\n");
+  chat.innerHTML = html;
+})
+
+/**
+ * Funciones de TOAST
+ * ------------------
+ * Sirpara mensajes temporales
+*/
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 5000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+})
+
+Swal.fire({
+  title: 'Identify yourself',
+  input: 'text',
+  text: 'Enter your username to log in to the chat',
+  inputValidator: (value) => {
+    return !value && 'You must type a username to continue!'
+  },
+  allowOutsideClick: false,
+  allowEscapeKey: false,
+  padding: '16px'
+}).then((result) => {
+  user = result.value;
+  socket.emit('login', user);
+});
+
+
+//Usuario Nuevo conectado
+socket.on('new-user', (user) => {
+  Toast.fire({
+    icon: 'info',
+    title: `${user} esta en linea`
+  })
+});
+
+//Bienvenido Usuario conectado
+socket.on('welcome', (user) => {
+  Toast.fire({
+    icon: 'success',
+    title: `Bienvenido ${user}!`
+  })
+});
 
 

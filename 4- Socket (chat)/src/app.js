@@ -46,11 +46,11 @@ const httpServer = app.listen(PORT, () => {
 });
 
 //Inicializamos Socket
+const messages = [];
 const socketServer = new Server(httpServer);
 
 //emmit => enviar evento
 //on => Escucha evento
-
 socketServer.on("connection", (socket) =>{
 
     console.log("Cliente conectado")
@@ -72,17 +72,22 @@ socketServer.on("connection", (socket) =>{
     //Ejemplo: Mensaje del chat de Martin
     socketServer.emit("todos", "Este msj lo todos los cliente - todos los sockets");
 
-    //Ejemplo chat
-    socket.on("chat", (data)=>{
-        socketServer.emit("print_chat", data);
-    })
-
     //chat
     socket.on('login', (user) => {
-        socket.emit('message-logs', messages);
+        //Cuando se conecta un nuevo usuario entregamos todos los mensajes
+        socket.emit('msj-chat', messages);
+        
+        //Si se conecta le da la bienvenida
         socket.emit('welcome', user);
-        socket.broadcast.emit('new-user', user);
+
+        //Nuevo usuario conectado
+         socket.broadcast.emit('new-user', user);
     });
 
+
+    socket.on('msj', (data) => {
+        messages.push(data);
+        socketServer.emit("msj-chat", messages);
+    })
 
 })
